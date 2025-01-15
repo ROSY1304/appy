@@ -16,6 +16,26 @@ app.config['DOCUMENTS_FOLDER'] = DOCUMENTS_FOLDER
 def home():
     return send_from_directory('static', 'index.html')
 
+# Endpoint para listar los documentos disponibles
+@app.route('/documentos', methods=['GET'])
+def obtener_documentos():
+    """
+    Lista todos los archivos .ipynb disponibles en la carpeta DOCUMENTS_FOLDER.
+    """
+    try:
+        # Obtener la lista de archivos .ipynb en la carpeta documentos
+        archivos = [f for f in os.listdir(DOCUMENTS_FOLDER) if f.endswith('.ipynb')]
+
+        if not archivos:
+            return jsonify({"mensaje": "No hay archivos .ipynb en el directorio."}), 404
+
+        # Retornar la lista de archivos
+        return jsonify(archivos), 200
+    except FileNotFoundError:
+        return jsonify({"mensaje": "No se encontró el directorio de documentos"}), 404
+    except Exception as e:
+        return jsonify({"mensaje": str(e)}), 500
+
 @app.route('/documentos/contenido/<nombre>', methods=['GET'])
 def ver_contenido_documento(nombre):
     try:
@@ -29,14 +49,14 @@ def ver_contenido_documento(nombre):
 
             if nombre == 'REGRESION-Copy1.ipynb':
                 # Buscar la celda 146
-                celda_146 = next((celda for celda in notebook_content.cells if celda.metadata.get('id') == 146), None)
-                if celda_146 and celda_146.cell_type == 'code':
+                celda_146 = notebook_content.cells[145]  # Celdas en un notebook empiezan desde el índice 0
+                if celda_146.cell_type == 'code':
                     contenido = procesar_solo_salidas(celda_146)
 
             elif nombre == 'Arboles de decision.ipynb':
                 # Buscar la celda 74
-                celda_74 = next((celda for celda in notebook_content.cells if celda.metadata.get('id') == 74), None)
-                if celda_74 and celda_74.cell_type == 'code':
+                celda_74 = notebook_content.cells[73]  # Celdas en un notebook empiezan desde el índice 0
+                if celda_74.cell_type == 'code':
                     contenido = procesar_solo_salidas(celda_74)
 
             else:
