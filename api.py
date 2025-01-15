@@ -48,16 +48,18 @@ def ver_contenido_documento(nombre):
             contenido = []
 
             if nombre == 'REGRESION-Copy1.ipynb':
-                # Buscar la celda 146
-                celda_146 = notebook_content.cells[145]  # Celdas en un notebook empiezan desde el índice 0
-                if celda_146.cell_type == 'code':
-                    contenido = procesar_solo_salidas(celda_146)
+                # Mostrar solo la salida de la celda 146
+                if len(notebook_content.cells) >= 146:
+                    celda_146 = notebook_content.cells[145]  # Índice 145 corresponde a la celda 146
+                    if celda_146.cell_type == 'code':
+                        contenido = procesar_solo_salidas(celda_146)
 
             elif nombre == 'Arboles de decision.ipynb':
-                # Buscar la celda 74
-                celda_74 = notebook_content.cells[73]  # Celdas en un notebook empiezan desde el índice 0
-                if celda_74.cell_type == 'code':
-                    contenido = procesar_solo_salidas(celda_74)
+                # Mostrar solo la salida de la celda 74
+                if len(notebook_content.cells) >= 74:
+                    celda_74 = notebook_content.cells[73]  # Índice 73 corresponde a la celda 74
+                    if celda_74.cell_type == 'code':
+                        contenido = procesar_solo_salidas(celda_74)
 
             else:
                 return jsonify({'mensaje': 'Este archivo no está permitido para visualización'}), 403
