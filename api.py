@@ -1,12 +1,12 @@
 from flask import Flask, jsonify, request, send_from_directory
 import os
 import nbformat
-from flask_cors import CORS  # Importa la extensión CORS
+from flask_cors import CORS
 
 app = Flask(__name__, static_folder='static')
 
 # Habilitar CORS para la aplicación completa
-CORS(app)  # Esto permitirá que todas las rutas acepten solicitudes de otros dominios
+CORS(app)
 
 # Directorio donde están los documentos .ipynb
 DOCUMENTS_FOLDER = 'documentos'
@@ -28,6 +28,38 @@ def obtener_documentos():
     except FileNotFoundError:
         return jsonify({"mensaje": "No se encontró el directorio de documentos"}), 404
 
+def extraer_accuracy(notebook_content):
+    contenido = []
+    for cell in notebook_content.cells:
+        if cell.cell_type == 'code':
+            for output in cell.outputs:
+                if 'text' in output and 'accuracy' in output['text'].lower():
+                    contenido.append({
+                        'tipo': 'accuracy',
+                        'contenido': output['text']
+                    })
+    return contenido
+
+def extraer_graficos(notebook_content):
+    contenido = []
+    for cell in notebook_content.cells:
+        if cell.cell_type == 'code':
+            cell_data = {
+                'tipo': 'código',
+                'contenido': cell.source,
+                'salidas': []
+            }
+            for output in cell.outputs:
+                if 'data' in output and 'image/png' in output['data']:
+                    cell_data['salidas'].append({
+                        'tipo': 'imagen',
+                        'contenido': output['data']['image/png']
+                    })
+            contenido.append(cell_data)
+    if len(contenido) > 2:
+        contenido = contenido[-2:]  # Solo mantener las últimas dos celdas
+    return contenido
+
 @app.route('/documentos/contenido/<nombre>', methods=['GET'])
 def ver_contenido_documento(nombre):
     try:
@@ -37,46 +69,18 @@ def ver_contenido_documento(nombre):
             with open(notebook_path, 'r', encoding='utf-8') as f:
                 notebook_content = nbformat.read(f, as_version=4)
 
-            contenido = []
-            for cell in notebook_content.cells:
-                if cell.cell_type == 'code':
-                    if nombre == 'REGRESION-Copy1.ipynb':
-                        # Solo agregar salidas de accuracy
-                        for output in cell.outputs:
-                            if 'text' in output and 'accuracy' in output['text'].lower():
-                                contenido.append({
-                                    'tipo': 'accuracy',
-                                    'contenido': output['text']
-                                })
-                    elif nombre == 'Arboles de decision.ipynb':
-                        # Solo agregar gráficos de las últimas dos celdas
-                        cell_data = {
-                            'tipo': 'código',
-                            'contenido': cell.source,
-                            'salidas': []
-                        }
-                        for output in cell.outputs:
-                            if 'data' in output and 'image/png' in output['data']:
-                                cell_data['salidas'].append({
-                                    'tipo': 'imagen',
-                                    'contenido': output['data']['image/png']
-                                })
-                        contenido.append(cell_data)
-                elif cell.cell_type == 'markdown':
-                    contenido.append({
-                        'tipo': 'texto',
-                        'contenido': cell.source
-                    })
-            
-            if nombre == 'Arboles de decision.ipynb' and len(contenido) > 2:
-                contenido = contenido[-2:]  # Solo mantener las últimas dos celdas
+            if nombre == 'REGRESION-Copy1.ipynb':
+                contenido = extraer_accuracy(notebook_content)
+            elif nombre == 'Arboles de decision.ipynb':
+                contenido = extraer_graficos(notebook_content)
+            else:
+                contenido = [{"mensaje": "Archivo no soportado"}]
 
             return jsonify(contenido), 200
         else:
             return jsonify({'mensaje': 'Archivo no encontrado o formato incorrecto'}), 404
     except Exception as e:
         return jsonify({'mensaje': str(e)}), 500
-
 
 # Iniciar la aplicación
 if __name__ == '__main__':
