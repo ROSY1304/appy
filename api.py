@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 import os
 import nbformat
 from flask_cors import CORS
@@ -16,20 +16,17 @@ app.config['DOCUMENTS_FOLDER'] = DOCUMENTS_FOLDER
 def home():
     return send_from_directory('static', 'index.html')
 
-# Endpoint para listar los documentos disponibles
 @app.route('/documentos', methods=['GET'])
 def obtener_documentos():
     """
     Lista todos los archivos .ipynb disponibles en la carpeta DOCUMENTS_FOLDER.
     """
     try:
-        # Obtener la lista de archivos .ipynb en la carpeta documentos
         archivos = [f for f in os.listdir(DOCUMENTS_FOLDER) if f.endswith('.ipynb')]
 
         if not archivos:
             return jsonify({"mensaje": "No hay archivos .ipynb en el directorio."}), 404
 
-        # Retornar la lista de archivos
         return jsonify(archivos), 200
     except FileNotFoundError:
         return jsonify({"mensaje": "No se encontró el directorio de documentos"}), 404
@@ -38,6 +35,9 @@ def obtener_documentos():
 
 @app.route('/documentos/contenido/<nombre>', methods=['GET'])
 def ver_contenido_documento(nombre):
+    """
+    Muestra contenido específico de celdas para los notebooks permitidos.
+    """
     try:
         notebook_path = os.path.join(DOCUMENTS_FOLDER, nombre)
 
@@ -50,16 +50,24 @@ def ver_contenido_documento(nombre):
             if nombre == 'REGRESION-Copy1.ipynb':
                 # Mostrar solo la salida de la celda 146
                 if len(notebook_content.cells) >= 146:
-                    celda_146 = notebook_content.cells[145]  # Índice 145 corresponde a la celda 146
+                    celda_146 = notebook_content.cells[145]
                     if celda_146.cell_type == 'code':
                         contenido = procesar_solo_salidas(celda_146)
+                    else:
+                        contenido = [{"mensaje": "La celda 146 no es de tipo código."}]
+                else:
+                    contenido = [{"mensaje": "El notebook no tiene suficientes celdas para mostrar la celda 146."}]
 
             elif nombre == 'Arboles de decision.ipynb':
                 # Mostrar solo la salida de la celda 74
                 if len(notebook_content.cells) >= 74:
-                    celda_74 = notebook_content.cells[73]  # Índice 73 corresponde a la celda 74
+                    celda_74 = notebook_content.cells[73]
                     if celda_74.cell_type == 'code':
                         contenido = procesar_solo_salidas(celda_74)
+                    else:
+                        contenido = [{"mensaje": "La celda 74 no es de tipo código."}]
+                else:
+                    contenido = [{"mensaje": "El notebook no tiene suficientes celdas para mostrar la celda 74."}]
 
             else:
                 return jsonify({'mensaje': 'Este archivo no está permitido para visualización'}), 403
@@ -69,7 +77,6 @@ def ver_contenido_documento(nombre):
             return jsonify({'mensaje': 'Archivo no encontrado o formato incorrecto'}), 404
     except Exception as e:
         return jsonify({'mensaje': str(e)}), 500
-
 
 def procesar_solo_salidas(celda):
     """
@@ -99,7 +106,6 @@ def procesar_solo_salidas(celda):
                     'contenido': output['data']['text/html']
                 })
     return salidas
-
 
 # Iniciar la aplicación
 if __name__ == '__main__':
