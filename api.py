@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory, render_template
+from flask import Flask, jsonify, request, send_from_directory
 import os
 import nbformat
 from flask_cors import CORS  # Importa la extensión CORS
@@ -40,44 +40,37 @@ def ver_contenido_documento(nombre):
             contenido = []
             for cell in notebook_content.cells:
                 if cell.cell_type == 'code':
-                    cell_data = {
-                        'tipo': 'código',
-                        'contenido': cell.source,
-                        'salidas': []
-                    }
-
-                    # Procesar las salidas de la celda de código
-                    for output in cell.outputs:
-                        if 'text' in output:
-                            cell_data['salidas'].append({
-                                'tipo': 'texto',
-                                'contenido': output['text']
-                            })
-                        elif 'data' in output:
-                            # Revisar si hay salida de imagen u otro tipo de datos
-                            if 'image/png' in output['data']:
+                    if nombre == 'REGRESION-Copy1.ipynb':
+                        # Solo agregar salidas de accuracy
+                        for output in cell.outputs:
+                            if 'text' in output and 'accuracy' in output['text'].lower():
+                                contenido.append({
+                                    'tipo': 'accuracy',
+                                    'contenido': output['text']
+                                })
+                    elif nombre == 'Arboles de decision.ipynb':
+                        # Solo agregar gráficos de las últimas dos celdas
+                        cell_data = {
+                            'tipo': 'código',
+                            'contenido': cell.source,
+                            'salidas': []
+                        }
+                        for output in cell.outputs:
+                            if 'data' in output and 'image/png' in output['data']:
                                 cell_data['salidas'].append({
                                     'tipo': 'imagen',
                                     'contenido': output['data']['image/png']
                                 })
-                            elif 'application/json' in output['data']:
-                                cell_data['salidas'].append({
-                                    'tipo': 'json',
-                                    'contenido': output['data']['application/json']
-                                })
-                            elif 'text/html' in output['data']:
-                                cell_data['salidas'].append({
-                                    'tipo': 'html',
-                                    'contenido': output['data']['text/html']
-                                })
-                    contenido.append(cell_data)
-                
+                        contenido.append(cell_data)
                 elif cell.cell_type == 'markdown':
                     contenido.append({
                         'tipo': 'texto',
                         'contenido': cell.source
                     })
             
+            if nombre == 'Arboles de decision.ipynb' and len(contenido) > 2:
+                contenido = contenido[-2:]  # Solo mantener las últimas dos celdas
+
             return jsonify(contenido), 200
         else:
             return jsonify({'mensaje': 'Archivo no encontrado o formato incorrecto'}), 404
