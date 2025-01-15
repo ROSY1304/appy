@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 import os
 import nbformat
 from flask_cors import CORS
@@ -16,26 +16,6 @@ app.config['DOCUMENTS_FOLDER'] = DOCUMENTS_FOLDER
 def home():
     return send_from_directory('static', 'index.html')
 
-# Endpoint para listar los documentos disponibles
-@app.route('/documentos', methods=['GET'])
-def obtener_documentos():
-    """
-    Lista todos los archivos .ipynb disponibles en la carpeta DOCUMENTS_FOLDER.
-    """
-    try:
-        # Obtener la lista de archivos .ipynb en la carpeta documentos
-        archivos = [f for f in os.listdir(DOCUMENTS_FOLDER) if f.endswith('.ipynb')]
-
-        if not archivos:
-            return jsonify({"mensaje": "No hay archivos .ipynb en el directorio."}), 404
-
-        # Retornar la lista de archivos
-        return jsonify(archivos), 200
-    except FileNotFoundError:
-        return jsonify({"mensaje": "No se encontró el directorio de documentos"}), 404
-    except Exception as e:
-        return jsonify({"mensaje": str(e)}), 500
-
 @app.route('/documentos/contenido/<nombre>', methods=['GET'])
 def ver_contenido_documento(nombre):
     try:
@@ -48,18 +28,16 @@ def ver_contenido_documento(nombre):
             contenido = []
 
             if nombre == 'REGRESION-Copy1.ipynb':
-                # Extraer solo la última celda
-                ultima_celda = notebook_content.cells[-1]
-                if ultima_celda.cell_type == 'code':
-                    cell_data = procesar_celda_codigo(ultima_celda)
-                    contenido.append(cell_data)
+                # Buscar la celda 146
+                celda_146 = next((celda for celda in notebook_content.cells if celda.metadata.get('id') == 146), None)
+                if celda_146 and celda_146.cell_type == 'code':
+                    contenido = procesar_solo_salidas(celda_146)
 
             elif nombre == 'Arboles de decision.ipynb':
-                # Extraer las dos últimas celdas
-                for celda in notebook_content.cells[-2:]:
-                    if celda.cell_type == 'code':
-                        cell_data = procesar_celda_codigo(celda)
-                        contenido.append(cell_data)
+                # Buscar la celda 74
+                celda_74 = next((celda for celda in notebook_content.cells if celda.metadata.get('id') == 74), None)
+                if celda_74 and celda_74.cell_type == 'code':
+                    contenido = procesar_solo_salidas(celda_74)
 
             else:
                 return jsonify({'mensaje': 'Este archivo no está permitido para visualización'}), 403
@@ -71,39 +49,34 @@ def ver_contenido_documento(nombre):
         return jsonify({'mensaje': str(e)}), 500
 
 
-def procesar_celda_codigo(celda):
+def procesar_solo_salidas(celda):
     """
-    Procesa una celda de código y sus salidas para devolver un formato JSON.
+    Procesa una celda de código para devolver solo las salidas (sin mostrar el código).
     """
-    cell_data = {
-        'tipo': 'código',
-        'contenido': celda.source,
-        'salidas': []
-    }
-
+    salidas = []
     for output in celda.outputs:
         if 'text' in output:
-            cell_data['salidas'].append({
+            salidas.append({
                 'tipo': 'texto',
                 'contenido': output['text']
             })
         elif 'data' in output:
             if 'image/png' in output['data']:
-                cell_data['salidas'].append({
+                salidas.append({
                     'tipo': 'imagen',
                     'contenido': output['data']['image/png']
                 })
             elif 'application/json' in output['data']:
-                cell_data['salidas'].append({
+                salidas.append({
                     'tipo': 'json',
                     'contenido': output['data']['application/json']
                 })
             elif 'text/html' in output['data']:
-                cell_data['salidas'].append({
+                salidas.append({
                     'tipo': 'html',
                     'contenido': output['data']['text/html']
                 })
-    return cell_data
+    return salidas
 
 
 # Iniciar la aplicación
